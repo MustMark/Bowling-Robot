@@ -125,38 +125,20 @@ if __name__ == '__main__':
     joints_pub = rospy.Publisher('/servo_controllers/port_id_1/multi_id_pos_dur', MultiRawIdPosDur, queue_size=1)
     rospy.sleep(1)
 
+    GPIO.output(24, GPIO.LOW)
+    print("Press Start Button !")
+    
+    while True:
+        sensor_data = read_sensor_i2c()
+
+        if sensor_data[7] == '0':
+            GPIO.output(24, GPIO.HIGH)
+            break
+
     for ball_round in range(2):
-
-        cap = cv2.VideoCapture(0)
-        if not cap.isOpened():
-            print("cannot open camera")
-            sys.exit(1)
-
-        if ball_round == 0:
-            GPIO.output(8, GPIO.LOW)
-            print("Press Start Button !")
-            
-            while True:
-                sensor_data = read_sensor_i2c()
-
-                if sensor_data[7] == '0':
-                    GPIO.output(8, GPIO.HIGH)
-                    break
 
         required_confirmations = 3
         confirm_count = 0
-        min_pin_count = 1
-        max_seen_pins = 0
-        dx = 10000
-        pin_count = 0
-        mode = "scan"
-
-        if ball_round == 0:
-            min_pin_count = 3
-        elif ball_round == 1:
-            min_pin_count = 1
-        else:
-            pass
 
         release_ball()
 
@@ -245,132 +227,15 @@ if __name__ == '__main__':
 
         stop(2)
 
-        print("[INFO] Warming up camera...")
-        for i in range(10):
-            ret, frame = cap.read()
-            if not ret:
-                print(f"[WARN] Frame not ready on attempt {i+1}")
-            time.sleep(0.1)
-        print("[INFO] Camera ready. Starting main loop.")
-
-        scan_step_count = 0
-        max_scan_steps = 30
-        scan_pause_duration = 0.5
-        confirm_count_pin = 0
-        required_confirm_pin = 1
-        tolerance = 3
-
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                print("Can't open camera")
-                break
-
-            height, width = frame.shape[:2]
-
-            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-            lower_white = np.array([0, 0, 180])
-            upper_white = np.array([180, 60, 255])
-            mask = cv2.inRange(hsv, lower_white, upper_white)
-
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            centers = []
-
-            for cnt in contours:
-                area = cv2.contourArea(cnt)
-                if area > 500:
-                    M = cv2.moments(cnt)
-                    if M['m00'] != 0:
-                        cx = int(M['m10'] / M['m00'])
-                        cy = int(M['m01'] / M['m00'])
-                        centers.append((cx, cy))
-                        cv2.circle(frame, (cx, cy), 5, (0, 255, 0), -1)
-
-            pin_count = len(centers)
-            cv2.putText(frame, f"Pins: {pin_count}", (20, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
-
-            if mode == "scan":
-                if scan_step_count >= max_scan_steps:
-                    print("Reached scan limit. Turning back right.")
-                    move(directions['right'], 1, 50, 0)
-                    stop()
-                    mode = "rotate"
-                    continue
-
-                if pin_count >= min_pin_count:
-                    print(f"Found {pin_count} pins ? Switching to rotate mode")
-                    stop()
-                    mode = "rotate"
-                    continue
-
-                print(f"[Scan step {scan_step_count}] Moving left to search pins...")
-                move(directions['left'], 1, 50, 0)
-                time.sleep(scan_pause_duration)
-                scan_step_count += 1
-
-            elif mode == "rotate":
-                if centers:
-                    avg_x = int(np.mean([c[0] for c in centers]))
-                    dx = avg_x - width // 2
-
-                    cv2.putText(frame, f"dx = {dx}", (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-
-                    if abs(dx) > tolerance:
-                        confirm_count_pin = 0 
-                        if dx > 0:
-                            direction = directions['right']
-                        else:
-                            direction = directions['left']
-
-                        abs_dx = abs(dx)
-                        if abs_dx > 80:
-                            speed = 40
-                            step = 2
-                        elif abs_dx > 40:
-                            speed = 15
-                            step = 2
-                        elif abs_dx > 20:
-                            speed = 5
-                            step = 1
-                        else:
-                            speed = 4
-                            step = 1
-
-                        print(f"dx = {dx} → Move {'right' if dx > 0 else 'left'} | speed={speed}, step={step}")
-                        move(direction, step, speed, 0)
-                        stop()
-                        time.sleep(0.3)
-
-                    else:
-                        stop()
-                        confirm_count_pin += 1
-                        print(f"[ALIGN] dx = {dx} in tolerance → Confirm {confirm_count_pin}/{required_confirm_pin}")
-
-                        if confirm_count_pin >= required_confirm_pin:
-                            print("[ACTION] Alignment Confirmed → Release Ball!")
-                            release_ball()
-                            break
-                        else:
-                            time.sleep(0.2)
-                else:
-                    print("Lost pin")
-                    mode = "scan"
-                    scan_step_count = 0
-
-
-            cv2.imshow("Bowling Pin Align", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                stop()
-                break
-
-        cap.release()
-        cv2.destroyAllWindows()
+        if ball_round == 0:
+            move(directions['left'], 100, 60, 0)
+        elif ball_round == 1:
+            move(directions['left'], 400, 60, 0)
+        else:
+            pass
 
         release_ball()
+
         stop(1)
 
         while True:
