@@ -7,7 +7,7 @@ GPIO.setup(7, GPIO.OUT)
 GPIO.setup(8, GPIO.OUT)
 GPIO.setup(24, GPIO.OUT)
 
-MAX_RETRIES = 10
+MAX_RETRIES = 30
 retry_count = 0
 
 def led_blink(round):
@@ -24,7 +24,7 @@ def led_blink(round):
 try:
     while retry_count < MAX_RETRIES:
         try:
-            result = subprocess.run(["python3", "frame_one.py"], check=True)
+            result = subprocess.run(["python3", "/home/ubuntu/Desktop/frame_one.py"], check=True)
             print("Frame one script ran successfully.")
             break
         except subprocess.CalledProcessError as e:
@@ -33,7 +33,7 @@ try:
             print(f"Frame one script failed (count: {retry_count}). Retrying ...")
     else:
         print("Failed 10 times. Running error_frame_one.py ...")
-        subprocess.run(["python3", "error_frame_one.py"])
+        subprocess.run(["python3", "/home/ubuntu/Desktop/error_frame_one.py"])
 except KeyboardInterrupt:
     print("Stopped by user.")
 finally:
