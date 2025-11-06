@@ -132,16 +132,6 @@ if __name__ == '__main__':
             print("cannot open camera")
             sys.exit(1)
 
-        if ball_round == 0:
-            GPIO.output(8, GPIO.LOW)
-            print("Press Start Button !")
-            
-            while True:
-                sensor_data = read_sensor_i2c()
-
-                if sensor_data[7] == '0':
-                    GPIO.output(8, GPIO.HIGH)
-                    break
 
         required_confirmations = 3
         confirm_count = 0
@@ -158,44 +148,64 @@ if __name__ == '__main__':
         else:
             pass
 
-        release_ball()
+        if ball_round == 0:
+            while True:
+                move(directions['right'], 1, 40, 0)
 
-        stop(0.2)
+                sensor_data = read_sensor_i2c()
 
-        calibrate()
+                print(sensor_data)
 
-        stop(0.2)
+                IR_RIGHT = sensor_data[0]
+                print("IR_RIGHT:", IR_RIGHT)
 
-        move(directions['backward'], 20, 30, 0)
+                if IR_RIGHT == '0':
+                    confirm_count += 1
+                else:
+                    confirm_count = 0
 
-        stop(0.2)
+                if confirm_count >= required_confirmations:
+                    break
+        elif ball_round == 1:
+            
+            release_ball()
 
-        calibrate()
+            stop(0.2)
 
-        stop(0.2)
+            calibrate()
 
-        move(directions['right'], 400, 90, 0)
+            stop(0.2)
 
-        while True:
-            move(directions['right'], 1, 40, 0)
+            move(directions['backward'], 20, 30, 0)
 
-            sensor_data = read_sensor_i2c()
+            stop(0.2)
 
-            print(sensor_data)
+            calibrate()
 
-            IR_RIGHT = sensor_data[0]
+            stop(0.2)
 
-            print("IR_RIGHT:", IR_RIGHT)
+            move(directions['right'], 400, 90, 0)
 
-            if IR_RIGHT == '0':
-                confirm_count += 1
-            else:
-                confirm_count = 0
+            while True:
+                move(directions['right'], 1, 40, 0)
 
-            if confirm_count >= required_confirmations:
-                break
+                sensor_data = read_sensor_i2c()
 
-        stop(0.2)
+                print(sensor_data)
+
+                IR_RIGHT = sensor_data[0]
+                print("IR_RIGHT:", IR_RIGHT)
+
+                if IR_RIGHT == '0':
+                    confirm_count += 1
+                else:
+                    confirm_count = 0
+
+                if confirm_count >= required_confirmations:
+                    break
+        else:
+            pass
+
 
         move(directions['left'], 70, 40, 0)
 

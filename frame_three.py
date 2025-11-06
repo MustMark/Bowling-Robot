@@ -146,19 +146,9 @@ if __name__ == '__main__':
     first_round = True
     red_pin_found_first_round = False
 
+    
+
     for ball_round in range(1):
-
-        if ball_round == 0:
-            GPIO.output(8, GPIO.LOW)
-            print("Press Start Button !")
-            
-            while True:
-                sensor_data = read_sensor_i2c()
-
-                if sensor_data[7] == '0':
-                    GPIO.output(8, GPIO.HIGH)
-                    start_time = time.time()
-                    break
 
         first_round = (ball_round == 0)
         required_confirmations = 3
@@ -178,22 +168,6 @@ if __name__ == '__main__':
             exit()
 
         release_ball()
-
-        stop(0.2)
-
-        calibrate()
-
-        stop(0.2)
-
-        move(directions['backward'], 20, 30, 0)
-
-        stop(0.2)
-
-        calibrate()
-
-        stop(0.2)
-
-        move(directions['right'], 400, 90, 0)
 
         while True:
             move(directions['right'], 1, 40, 0)
