@@ -116,71 +116,6 @@ def read_sensor_i2c():
         print("Error reading from Arduino:", e)
         return None
 
-def detect_colors(frame):
-    """
-    คืนค่าชุดสีที่พบในเฟรม: {'red', 'green', 'white'}
-    ปรับ HSV ให้ทนแสงจริงหน้างาน (S,V ต่ำลงเล็กน้อย)
-    """
-    colors = set()
-    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-    # white: ค่า S ต่ำ V สูง
-    lower_white = np.array([0, 0, 180])
-    upper_white = np.array([180, 60, 255])
-    mask_white = cv2.inRange(hsv, lower_white, upper_white)
-
-    # green
-    lower_green = np.array([40, 50, 50])
-    upper_green = np.array([80, 255, 255])
-    mask_green = cv2.inRange(hsv, lower_green, upper_green)
-
-    lower_red1 = np.array([0, 120, 120])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([170, 120, 120])
-    upper_red2 = np.array([180, 255, 255])
-    mask_red = cv2.bitwise_or(
-        cv2.inRange(hsv, lower_red1, upper_red1),
-        cv2.inRange(hsv, lower_red2, upper_red2)
-    )
-
-    # ทำความสะอาดมาสก์
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    mask_white = cv2.morphologyEx(mask_white, cv2.MORPH_OPEN, kernel)
-    mask_white = cv2.morphologyEx(mask_white, cv2.MORPH_CLOSE, kernel)
-    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
-    mask_green = cv2.morphologyEx(mask_green, cv2.MORPH_CLOSE, kernel)
-    mask_red   = cv2.morphologyEx(mask_red,   cv2.MORPH_OPEN, kernel)
-    mask_red   = cv2.morphologyEx(mask_red,   cv2.MORPH_CLOSE, kernel)
-
-    # ฟังก์ชันกรอง blob ใหญ่จริง ไม่เอาแถบแดงแคบ
-    def has_big_red_blob(mask, min_area=500):
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        for cnt in contours:
-            area = cv2.contourArea(cnt)
-            if area < min_area:
-                continue
-            x, y, w, h = cv2.boundingRect(cnt)
-            aspect = h / float(w + 1e-6)
-            fill_ratio = area / float(w * h)
-            # ต้องเป็นก้อนค่อนข้างสูงและหนาแน่นพอ
-            if aspect > 0.8 and fill_ratio > 0.4:
-                return True
-        return False
-
-    def has_big_blob(mask, min_area=300):
-        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        return any(cv2.contourArea(cnt) >= min_area for cnt in contours)
-
-    if has_big_red_blob(mask_red):
-        colors.add('red')
-    if has_big_blob(mask_green):
-        colors.add('green')
-    if has_big_blob(mask_white):
-        colors.add('white')
-
-    return colors
-
-
 
 if __name__ == '__main__':
     rospy.init_node('bid_team_node', log_level=rospy.DEBUG)
@@ -197,69 +132,56 @@ if __name__ == '__main__':
             print("cannot open camera")
             sys.exit(1)
 
+        if ball_round == 0:
+            GPIO.output(8, GPIO.LOW)
+            print("Press Start Button !")
+            
+            while True:
+                sensor_data = read_sensor_i2c()
+
+                if sensor_data[7] == '0':
+                    GPIO.output(8, GPIO.HIGH)
+                    break
+
         required_confirmations = 3
         confirm_count = 0
         mode = "scan"
 
         release_ball()
 
-        if ball_round == 0:
-            while True:
-                move(directions['right'], 1, 40, 0)
+        stop(0.2)
 
-                sensor_data = read_sensor_i2c()
+        calibrate()
 
-                print(sensor_data)
+        stop(0.2)
 
-                IR_RIGHT = sensor_data[0]
-                print("IR_RIGHT:", IR_RIGHT)
+        move(directions['backward'], 20, 30, 0)
 
-                if IR_RIGHT == '0':
-                    confirm_count += 1
-                else:
-                    confirm_count = 0
+        stop(0.2)
 
-                if confirm_count >= required_confirmations:
-                    break
-        elif ball_round == 1:
-            release_ball()
+        calibrate()
 
-            stop(0.2)
+        stop(0.2)
 
-            calibrate()
+        move(directions['right'], 400, 90, 0)
 
-            stop(0.2)
+        while True:
+            move(directions['right'], 1, 40, 0)
 
-            move(directions['backward'], 20, 30, 0)
+            sensor_data = read_sensor_i2c()
 
-            stop(0.2)
+            print(sensor_data)
 
-            calibrate()
+            IR_RIGHT = sensor_data[0]
+            print("IR_RIGHT:", IR_RIGHT)
 
-            stop(0.2)
+            if IR_RIGHT == '0':
+                confirm_count += 1
+            else:
+                confirm_count = 0
 
-            move(directions['right'], 400, 90, 0)
-
-            while True:
-                move(directions['right'], 1, 40, 0)
-
-                sensor_data = read_sensor_i2c()
-
-                print(sensor_data)
-
-                IR_RIGHT = sensor_data[0]
-                print("IR_RIGHT:", IR_RIGHT)
-
-                if IR_RIGHT == '0':
-                    confirm_count += 1
-                else:
-                    confirm_count = 0
-
-                if confirm_count >= required_confirmations:
-                    break
-        else:
-            pass
-
+            if confirm_count >= required_confirmations:
+                break
 
         stop(0.2)
 
