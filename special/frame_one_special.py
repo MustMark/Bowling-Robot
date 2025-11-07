@@ -328,11 +328,11 @@ if __name__ == '__main__':
 
             seen_colors = sweep_right_and_summarize(
                 cap,
-                steps=55,        # จำนวนสเต็ปที่กวาด (เพิ่มถ้าต้องกวาดไกล)
-                step_dist=2,     # ระยะต่อสเต็ป (ต้องสัมพันธ์กับ speed ใน move)
-                speed=40,        # ความเร็วเคลื่อนที่ของ move()
-                pause=0.25,      # เว้นให้ภาพนิ่งก่อนอ่านเฟรมถัดไป
-                show_preview=True  # True ถ้าอยากดูพรีวิวระหว่างกวาด
+                steps=55,
+                step_dist=2,
+                speed=40,
+                pause=0.25,
+                show_preview=True
             )
             print(seen_colors)
 

@@ -243,7 +243,7 @@ if __name__ == '__main__':
     first_round = True
     red_pin_found_first_round = False
 
-    for ball_round in range(2):
+    for ball_round in range(3):
 
         first_round = (ball_round == 0)
         required_confirmations = 3
@@ -457,6 +457,12 @@ if __name__ == '__main__':
 
         print("Checking for red pin before scanning white pin...")
 
+        if ball_round == 2:
+            cap = cv2.VideoCapture(0)
+            if not cap.isOpened():
+                print("cannot open camera")
+                sys.exit(1)
+                
         ret, frame = cap.read()
         if not ret:
             print("Can't read camera")
